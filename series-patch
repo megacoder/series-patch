@@ -1,0 +1,34 @@
+#!/bin/zsh
+DONT=''
+DOIT=cat
+while getopts nx c
+do
+	case "$c" in
+	n)	DONT='--dry-run';;
+	x)	DOIT=${SHELL};;
+	*)	echo "${USAGE}" >&2; exit 1;;
+	esac
+done
+shift $(expr ${OPTIND} - 1)
+if [ $# -ne 1 ]; then
+	echo "usage: $0 /path/to/prefix" >&2
+	exit 1
+fi
+series=$1
+prefix=$(dirname ${series})/
+awk	-v DONT="${DONT}" -v prefix="${prefix}" '
+{	sub( /#.*$/, "" )	}
+BEGIN	{
+	print "#!/bin/zsh"
+	print "set -e"
+}
+/./	{
+	for( i = 1; i <= NF; ++i )	{
+		if( others++ )	{
+			print "echo"
+		}
+		printf "echo %s\n", $i
+		printf "patch %s -p1 < %s\n", DONT, prefix $i
+	}
+}
+' ${series} | ${DOIT}
